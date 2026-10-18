@@ -1352,7 +1352,7 @@ impl<'a> Parser<'a> {
                     err.span_label(lo, "while parsing this `match` expression");
                     err
                 })
-            } else if this.eat_keyword(exp!(Unsafe)) { // parsing_unsafe
+            } else if this.eat_keyword(exp!(Unsafe)) { //BOOKMARK
                 if this.token == token::OpenBrace {
                     this.parse_expr_block(None, lo, BlockCheckMode::Unsafe(ast::UserProvided))
                         .map_err(|mut err| {
