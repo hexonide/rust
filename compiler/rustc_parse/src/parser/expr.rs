@@ -1352,13 +1352,28 @@ impl<'a> Parser<'a> {
                     err.span_label(lo, "while parsing this `match` expression");
                     err
                 })
-            } else if this.eat_keyword(exp!(Unsafe)) {
-                this.parse_expr_block(None, lo, BlockCheckMode::Unsafe(ast::UserProvided)).map_err(
-                    |mut err| {
-                        err.span_label(lo, "while parsing this `unsafe` expression");
-                        err
-                    },
-                )
+            } else if this.eat_keyword(exp!(Unsafe)) { //BOOKMARK
+                if this.token == token::OpenBrace {
+                    this.parse_expr_block(None, lo, BlockCheckMode::Unsafe(ast::UserProvided))
+                        .map_err(|mut err| {
+                            err.span_label(lo, "while parsing this `unsafe` expression");
+                            err
+                        })
+                } else {
+                    let expr =
+                        this.parse_expr_dot_or_call(AttrWrapper::empty()).map_err(|mut err| {
+                            err.span_label(lo, "while parsing this `unsafe` expression");
+                            err
+                        })?;
+                    let span = lo.to(this.prev_token.span);
+                    let stmt = this.mk_stmt(span, StmtKind::Expr(expr));
+                    let blk = this.mk_block(
+                        thin_vec![stmt],
+                        BlockCheckMode::Unsafe(ast::UserProvided),
+                        span,
+                    );
+                    return Ok(this.mk_expr(span, ExprKind::Block(blk, None)));
+                }
             } else if this.check_inline_const(0) {
                 this.parse_const_block(lo, false)
             } else if this.may_recover() && this.is_do_catch_block() {
@@ -2176,7 +2191,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses a block or unsafe block.
+    /// Parses a block or unsafe blocks.
     pub(super) fn parse_expr_block(
         &mut self,
         opt_label: Option<Label>,
